@@ -1,49 +1,52 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
-import openpyxl
+import zipfile
 import io
 
 st.set_page_config(page_title="엑셀 이미지 일괄 진단", layout="wide")
-st.title("📊 엑셀 시트 이미지 일괄 진단 AI")
-st.write("사진이 포함된 엑셀 파일(.xlsx)을 올리면, AI가 시트 내의 모든 사진을 찾아내어 분석합니다.")
+st.title("🚀 엑셀 숨은 이미지 직접 추출 & 진단 AI")
+st.write("엑셀 파일 내부 구조를 직접 분해하여, 숨겨진 원본 이미지만을 강제로 추출해 분석합니다.")
 
 # 1. Gemini 2.5 Flash API 설정
 GOOGLE_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# 2. 엑셀 파일 업로더
+# 2. 파일 업로더
 uploaded_file = st.file_uploader("이미지가 포함된 엑셀 파일을 업로드하세요...", type=["xlsx"])
 
 if uploaded_file:
-    if st.button("🚀 엑셀 이미지 전체 분석 시작"):
+    if st.button("🚀 엑셀 이미지 강제 추출 및 전체 분석"):
         try:
-            # 버퍼 유실 방지를 위해 getvalue()와 io.BytesIO 사용
-            file_bytes = uploaded_file.getvalue()
-            wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
             image_count = 0
            
-            for sheet_name in wb.sheetnames:
-                ws = wb[sheet_name]
+            # [핵심 기술] 엑셀(.xlsx) 파일을 압축 파일(ZIP)로 취급하여 직접 엽니다.
+            with zipfile.ZipFile(uploaded_file, 'r') as excel_zip:
+                # 엑셀 내부의 모든 파일 목록 가져오기
+                file_list = excel_zip.namelist()
                
-                if hasattr(ws, '_images') and ws._images:
-                    st.write(f"---")
-                    st.subheader(f"📋 시트명: {sheet_name}")
+                # 'xl/media/' 폴더 안에 있는 실제 이미지 파일(jpg, png 등)만 필터링
+                image_files = [f for f in file_list if f.startswith('xl/media/') and f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+               
+                if not image_files:
+                    st.warning("⚠️ 엑셀 파일 내부에 추출할 수 있는 이미지(jpg, png)가 없습니다.")
+                else:
+                    st.success(f"✅ 에러 우회 성공! 총 {len(image_files)}장의 이미지를 찾아냈습니다. 분석을 시작합니다.")
+                    st.write("---")
                    
-                    for idx, excel_image in enumerate(ws._images):
+                    for img_path in image_files:
                         image_count += 1
                        
-                        img_bytes = excel_image._data()
+                        # 압축 파일 내에서 이미지 데이터만 쏙 빼오기
+                        img_bytes = excel_zip.read(img_path)
                         img = Image.open(io.BytesIO(img_bytes))
                        
-                        cell_loc = excel_image.anchor if hasattr(excel_image, 'anchor') else "위치 불명"
-                       
-                        with st.expander(f"🔍 사진 #{image_count} (엑셀 내 위치: {cell_loc})", expanded=True):
+                        with st.expander(f"🔍 추출된 사진 #{image_count}", expanded=True):
                             col1, col2 = st.columns([1, 2])
                            
                             with col1:
-                                st.image(img, caption=f"추출된 이미지 #{image_count}", use_container_width=True)
+                                st.image(img, use_container_width=True)
                                
                             with col2:
                                 with st.spinner('Gemini 2.5 Flash가 사진을 판독 중입니다...'):
@@ -53,15 +56,8 @@ if uploaded_file:
                                         st.markdown(response.text)
                                     except Exception as ai_err:
                                         st.error(f"AI 분석 중 오류: {ai_err}")
-                                       
-            if image_count == 0:
-                st.warning("⚠️ 엑셀 파일 안에서 이미지를 찾지 못했습니다. 사진이 셀 위에 정상적으로 삽입되어 있는지 확인해 주세요.")
-            else:
-                st.success(f"🎉 성공적으로 총 {image_count}장의 사진을 추출하여 분석을 마쳤습니다!")
-               
+
+        except zipfile.BadZipFile:
+            st.error("🚨 올바른 엑셀(.xlsx) 파일이 아니거나 강력한 사내 보안(DRM)으로 압축이 잠겨 있습니다.")
         except Exception as e:
-            import traceback
-            st.error(f"🚨 에러 유형: {type(e).__name__}")
-            st.error(f"🚨 에러 상세 내용: {str(e)}")
-            # 에러가 발생한 정확한 코드 위치(Traceback)까지 시원하게 출력합니다.
-            st.code(traceback.format_exc(), language="python")
+            st.error(f"🚨 예상치 못한 오류가 발생했습니다: {e}")
