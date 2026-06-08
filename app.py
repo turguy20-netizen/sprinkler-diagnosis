@@ -3,18 +3,19 @@ import google.generativeai as genai
 from PIL import Image
 import zipfile
 import io
+import time  # 무료 요금제 속도 제한(Rate Limit) 방지용
 
 st.set_page_config(page_title="엑셀 이미지 일괄 진단", layout="wide")
 st.title("🚀 엑셀 숨은 이미지 직접 추출 & 진단 AI")
 st.write("엑셀 파일 내부 구조를 직접 분해하여, 숨겨진 원본 이미지만을 강제로 추출해 분석합니다.")
 
-# 1. Gemini 2.5 Flash API 설정
+# 1. Gemini 2.5 Flash API 설정 (Secrets 안전 유지)
 GOOGLE_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# 2. 파일 업로더
-uploaded_file = st.file_uploader("이미지가 포함된 엑셀 파일을 업로드하세요...", type=["xlsx"])
+# 2. 엑셀 파일 업로더
+uploaded_file = st.file_uploader("이미지가 포함된 엑셀 파일(.xlsx)을 업로드하세요...", type=["xlsx"])
 
 if uploaded_file:
     if st.button("🚀 엑셀 이미지 강제 추출 및 전체 분석"):
@@ -49,11 +50,15 @@ if uploaded_file:
                                 st.image(img, use_container_width=True)
                                
                             with col2:
-                                with st.spinner('Gemini 2.5 Flash가 사진을 판독 중입니다...'):
+                                with st.spinner('Gemini 2.5 Flash가 판독 중입니다... (무료 요금제 제한으로 15초 대기)'):
                                     try:
                                         prompt = "현장 안전 점검 전문가로서 이 스프링클러 사진의 부식 상태를 (정상/주의/심각)으로 진단하고 상세 이유와 조치 방법을 한글로 간결하게 번호 붙여서 설명해줘."
                                         response = model.generate_content([prompt, img])
                                         st.markdown(response.text)
+                                       
+                                        # [핵심 추가] 1분에 5장 제한을 피하기 위해 한 장 분석 후 15초 멈춤
+                                        time.sleep(15)
+                                       
                                     except Exception as ai_err:
                                         st.error(f"AI 분석 중 오류: {ai_err}")
 
