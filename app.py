@@ -60,4 +60,8 @@ if uploaded_file:
                 st.success(f"🎉 성공적으로 총 {image_count}장의 사진을 추출하여 분석을 마쳤습니다!")
                
         except Exception as e:
-            st.error(f"🚨 엑셀 파일을 읽는 중 오류가 발생했습니다. 파일이 손상되었거나 호환되지 않는 포맷일 수 있습니다: {e}")
+            import traceback
+            st.error(f"🚨 에러 유형: {type(e).__name__}")
+            st.error(f"🚨 에러 상세 내용: {str(e)}")
+            # 에러가 발생한 정확한 코드 위치(Traceback)까지 시원하게 출력합니다.
+            st.code(traceback.format_exc(), language="python")
