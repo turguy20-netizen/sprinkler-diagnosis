@@ -6,8 +6,8 @@ import io
 import time  # 무료 요금제 속도 제한(Rate Limit) 방지용
 
 st.set_page_config(page_title="엑셀 이미지 일괄 진단", layout="wide")
-st.title("🚀 엑셀 숨은 이미지 직접 추출 & 진단 AI")
-st.write("엑셀 파일 내부 구조를 직접 분해하여, 숨겨진 원본 이미지만을 강제로 추출해 분석합니다.")
+st.title("🚀 방재그룹 스프링클러 부식 진단 AI")
+st.write("본 서비스는 스프링클러 이미지만을 강제로 추출해 분석합니다.made by 박세원")
 
 # 1. Gemini 2.5 Flash API 설정 (Secrets 안전 유지)
 GOOGLE_API_KEY = st.secrets["GEMINI_API_KEY"]
